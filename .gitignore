@@ -21,6 +21,11 @@ venv/
 *.gif
 *.png
 *.jpg
+!assets/
+!assets/**/
+!assets/**/*.gif
+!assets/**/*.png
+!assets/**/*.jpg
 runs/
 outputs/
 data/*.csv
