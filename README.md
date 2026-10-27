@@ -61,6 +61,14 @@ null FOV (infer) ───────────────┘
 
 **Training / validation.** There was **no held-out validation or evaluation split**. The full axial-quality subset above was used for training. Model selection used train loss plus qualitative MedVAE-decode visualizations.
 
+### Training progress
+
+EMA samples decoded with MedVAE during training (GT left, sample right; axial scroll):
+
+| Epoch 150 | Epoch 300 | Epoch 490 (last) |
+|:---------:|:---------:|:----------------:|
+| ![epoch 150](assets/training/epoch150_ct_gt_vs_sample.gif) | ![epoch 300](assets/training/epoch300_ct_gt_vs_sample.gif) | ![epoch 490](assets/training/epoch490_ct_gt_vs_sample.gif) |
+
 ---
 
 ## Repository layout
@@ -70,6 +78,7 @@ LoRAD/
   README.md
   requirements.txt
   LICENSE
+  assets/training/                  # training progress GIFs (epochs 150 / 300 / 490)
   data/
     training_case_list.txt          # CT-RATE filenames used for training
   saved_models/
