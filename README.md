@@ -214,7 +214,7 @@ Official metrics are those reported on the challenge leaderboard (FVD / FID / CL
 
 ## Limits and limitations
 
-The method is trained on a small CT-RATE subset because of compute and storage limits. Model selection relied on qualitative visual assessment of decoded samples rather than a held-out validation split. Because diffusion is trained in MedVAE latent space with a frozen decoder, MedVAE’s patchwise reconstruction can introduce tiling or seam-like artifacts. Our submission emphasized structural regularization via Sobel edge and tri-planar consistency losses, but we did not explore richer text-encoding pathways. At test time FOV is always null; CFG / sampler settings were not extensively ablated beyond the submitted configuration.
+The method is trained on a small CT-RATE subset because of compute and storage limits. Model selection relied on qualitative visual assessment of decoded samples rather than a held-out validation split or metric-based checkpointing. Because diffusion is trained in MedVAE latent space with a frozen decoder, MedVAE’s patchwise reconstruction can introduce tiling or seam-like artifacts that resemble anatomical structure in some samples. Our submission emphasized structural regularization via Sobel edge and tri-planar consistency losses to improve sharpness and inter-slice coherence, but we did not explore richer text-encoding pathways (e.g., stronger language models, report-section fusion, or text-side ablations).
 
 ---
 
