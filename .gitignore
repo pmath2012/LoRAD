@@ -10,6 +10,9 @@ venv/
 .cache/
 .nfs*
 *.ckpt
+!saved_models/
+!saved_models/**/
+!saved_models/**/*.ckpt
 *.pt
 *.pth
 *.npy
