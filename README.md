@@ -2,8 +2,6 @@
 
 **LoRAD** (*Low-Resource Adaptive Diffusion*) is a text-to-CT generation method that learns a 3D latent diffusion model under limited paired report–volume data, with soft field-of-view (FOV) conditioning and structural consistency losses for more anatomically plausible volumes.
 
-This repository contains the core training and inference code for LoRAD, plus the final submitted checkpoint (Git LFS).
-
 ---
 
 ## Team
@@ -20,7 +18,7 @@ This repository contains the core training and inference code for LoRAD, plus th
 
 LoRAD generates chest CT from free-text radiology reports in a compressed latent space:
 
-1. **Encode** CT with a frozen **MedVAE** 3D CT autoencoder after a fixed resize–pad preprocess → latents of shape `(48, 96, 96)`.
+1. **Encode** or **Downsize** CT with a frozen **MedVAE** 3D CT autoencoder after a fixed resize–pad preprocess → latents of shape `(48, 96, 96)`.
 2. **Diffuse** in latent space with a 3D U-Net (MedSyn-style) conditioned on frozen **CXR-BERT** report embeddings (**v-prediction**).
 3. **Regularize** predicted clean latents with:
    - axial **Sobel edge** L1 (in-plane structure), and
@@ -29,7 +27,7 @@ LoRAD generates chest CT from free-text radiology reports in a compressed latent
 5. **Sample** with **classifier-free guidance (CFG)**; FOV is always the learned null token at test time.
 6. **Decode** with MedVAE to HU and write NIfTI with a canonical LAS affine / spacing suitable for CT-RATE-style evaluation.
 
-Loss terms are combined with Kendall-style learned log-variances. An EMA copy of the network is used for visualization and inference.
+Loss terms are learned adaptively. An EMA of the network is used for visualization and inference.
 
 ```
 Report ──► CXR-BERT ──┐
@@ -190,13 +188,7 @@ Inference always uses the **null FOV** token (report + CFG only). DDIM steps: **
 
 ## Final weight file (leaderboard submission)
 
-| Item | Path |
-|------|------|
-| Submission checkpoint | [`saved_models/resizepad_48x96x96_fov_cfg/last.ckpt`](saved_models/resizepad_48x96x96_fov_cfg/last.ckpt) |
-| Host | GitHub + Git LFS |
-| Contents | Full Lightning checkpoint including **EMA** (`ema_model.*`) weights used for sampling |
-
-No LoRA/adapters — full U-Net weights.
+ Submission checkpoint [`saved_models/resizepad_48x96x96_fov_cfg/last.ckpt`](saved_models/resizepad_48x96x96_fov_cfg/last.ckpt) |
 
 ---
 
