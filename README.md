@@ -202,13 +202,18 @@ No LoRA/adapters — full U-Net weights.
 
 ## Results
 
-On the [CT Volume Generation](https://research.forithmus.com/challenges/ct-volume-generation#leaderboard) leaderboard (forithmus):
+Official scores from the [CT Volume Generation](https://research.forithmus.com/challenges/ct-volume-generation#leaderboard) leaderboard (forithmus, Main 2026), entry **Prateek Mathur** 
 
-| Team / entry | Rank |
-|--------------|------|
-| **Prateek Mathur** (LoRAD) | **6** |
-
-Official metrics are those reported on the challenge leaderboard (FVD / FID / CLIPScore-style evaluation on platform-converted volumes).
+| Metric | Value |
+|--------|------:|
+| **FVD (CTNet)** ↓ | **0.751** |
+| **FID 2.5D (Avg)** ↓ | **405.226** |
+| **CT-CLIPScore (Avg)** ↑ | **14.940** |
+| FID 2.5D (XY) | 561.085 |
+| FID 2.5D (XZ) | 324.316 |
+| FID 2.5D (YZ) | 330.278 |
+| CT-CLIPScore (T2I) | 14.430 |
+| CT-CLIPScore (I2I) | 15.450 |
 
 ---
 
@@ -220,14 +225,21 @@ The method is trained on a small CT-RATE subset because of compute and storage l
 
 ## References
 
-1. **MedVAE** — Hamamci et al. *MedVAE: Efficient Automated Interpretation of Medical Images with Large-Scale Generalizable Masked Autoencoders.* arXiv:2502.14753. https://arxiv.org/abs/2502.14753  
-2. **MedSyn** — Xu et al. *MedSyn: Text-guided Anatomy-aware Synthesis of High-Fidelity 3D CT Images.* IEEE TMI, 2024. https://ieeexplore.ieee.org/abstract/document/10566053  
-3. **Sobel edge regularization** — axial Sobel filtering (via Kornia) with L1 matching of edge maps on predicted vs target latents.  
-4. **Tri-planar / inter-slice consistency** — first-order finite differences along depth, height, and width with L1 matching (LiFT-C–style spatial consistency term).  
-5. **FOV conditioning** — soft field-of-view / content-extent features derived from latents, with null-FOV dropout for text-only inference.  
-6. **CT-RATE** — Hamamci et al. CT-RATE dataset (official release for data access).  
-7. **Classifier-free guidance** — Ho & Salimans; null-text dropout during training, CFG scale 3.0 at sampling.  
-8. **v-prediction** — Salimans & Ho velocity parameterization for diffusion training.
+[1] M. Varma et al., “MedVAE: Efficient Automated Interpretation of Medical Images with Large-Scale Generalizable Autoencoders,” arXiv:2502.14753, 2025. [Online]. Available: https://arxiv.org/abs/2502.14753
+
+[2] Y. Xu et al., “MedSyn: Text-Guided Anatomy-Aware Synthesis of High-Fidelity 3-D CT Images,” *IEEE Trans. Med. Imag.*, vol. 43, no. 10, pp. 3648–3660, Oct. 2024, doi: 10.1109/TMI.2024.3415032.
+
+[3] I. Sobel and G. Feldman, “A 3×3 isotropic gradient operator for image processing,” Stanford Artificial Intelligence Laboratory (SAIL), 1968. (Axial Sobel edge maps with L1 matching on predicted vs. target latents.)
+
+[4] Tri-planar / inter-slice consistency via first-order finite differences along depth, height, and width with L1 matching (LiFT-C–style spatial consistency term).
+
+[5] Soft field-of-view (FOV) / content-extent conditioning derived from latents, with null-FOV dropout for text-only inference.
+
+[6] I. E. Hamamci et al., “CT-RATE,” Hugging Face Datasets. [Online]. Available: https://huggingface.co/datasets/ibrahimhamamci/CT-RATE
+
+[7] J. Ho and T. Salimans, “Classifier-Free Diffusion Guidance,” arXiv:2207.12598, 2022. [Online]. Available: https://arxiv.org/abs/2207.12598
+
+[8] T. Salimans and J. Ho, “Progressive Distillation for Fast Sampling of Diffusion Models,” in *Proc. Int. Conf. Learn. Represent. (ICLR)*, 2022. (v-prediction parameterization.)
 
 ---
 
