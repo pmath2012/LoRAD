@@ -65,9 +65,9 @@ null FOV (infer) ───────────────┘
 
 EMA samples decoded with MedVAE during training (GT left, sample right; axial scroll):
 
-| Epoch 150 | Epoch 300 |
-|:---------:|:---------:|
-| ![epoch 150](assets/training/epoch150_ct_gt_vs_sample.gif) | ![epoch 300](assets/training/epoch300_ct_gt_vs_sample.gif) |
+| Epoch 10 | Epoch 150 | Epoch 300 |
+|:--------:|:---------:|:---------:|
+| ![epoch 10](assets/training/epoch10_ct_gt_vs_sample.gif) | ![epoch 150](assets/training/epoch150_ct_gt_vs_sample.gif) | ![epoch 300](assets/training/epoch300_ct_gt_vs_sample.gif) |
 
 ---
 
@@ -78,7 +78,7 @@ LoRAD/
   README.md
   requirements.txt
   LICENSE
-  assets/training/                  # training progress GIFs (epochs 150 / 300)
+  assets/training/                  # training progress GIFs (epochs 10 / 150 / 300)
   data/
     training_case_list.txt          # CT-RATE filenames used for training
   saved_models/
