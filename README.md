@@ -41,9 +41,9 @@ null FOV (infer) ───────────────┘
 
 | Component | Role |
 |-----------|------|
-| [MedVAE](https://arxiv.org/abs/2502.14753) (`medvae_4_1_3d`) | Frozen CT VAE encode/decode |
+| [MedVAE](https://github.com/StanfordMIMI/MedVAE) (`medvae_4_1_3d`; [paper](https://arxiv.org/abs/2502.14753)) | Frozen CT VAE encode/decode |
 | CXR-BERT | Frozen report text encoder (cross-attention conditioning) |
-| [MedSyn](https://ieeexplore.ieee.org/abstract/document/10566053)-style 3D U-Net | Latent diffusion backbone (adapted for latent-only input + FOV/CFG) |
+| [MedSyn](https://github.com/batmanlab/MedSyn)-style 3D U-Net ([paper](https://ieeexplore.ieee.org/abstract/document/10566053)) | Latent diffusion backbone (adapted for latent-only input + FOV/CFG) |
 
 ---
 
@@ -91,8 +91,8 @@ LoRAD/
 
 External code dependencies (not vendored):
 
-- [MedVAE](https://github.com/StanfordMIMI/MedVAE)
-- MedSyn-compatible `MedSyn/src` on `PYTHONPATH` (`Unet3D`, `GaussianDiffusion`, `EMA`, utils)
+- **[MedVAE](https://github.com/StanfordMIMI/MedVAE)** — frozen CT VAE encode/decode
+- **[MedSyn](https://github.com/batmanlab/MedSyn)** — `src/` provides `Unet3D`, `GaussianDiffusion`, `EMA`, and utils used by LoRAD
 - CXR-BERT tokenizer + encoder directory for text embeddings
 
 ---
@@ -105,13 +105,19 @@ git lfs install
 git clone https://github.com/pmath2012/LoRAD.git
 cd LoRAD
 
+# Clone MedVAE and MedSyn next to (or anywhere reachable from) this repo
+git clone https://github.com/StanfordMIMI/MedVAE.git ../MedVAE
+git clone https://github.com/batmanlab/MedSyn.git ../MedSyn
+
 # Python 3.10+, CUDA PyTorch matching your GPU
 pip install -r requirements.txt
-pip install -e /path/to/MedVAE
+pip install -e ../MedVAE
 
-export PYTHONPATH="/path/to/MedSyn/src:${PYTHONPATH}"
-export PYTHONPATH="/path/to/LoRAD:${PYTHONPATH}"
+# Put MedSyn's src/ and this repo on PYTHONPATH
+export PYTHONPATH="$(pwd)/../MedSyn/src:$(pwd):${PYTHONPATH}"
 ```
+
+Adjust the clone paths if you place MedVAE / MedSyn elsewhere; keep `MedSyn/src` (the folder that contains the diffusion / U-Net modules) on `PYTHONPATH`.
 
 ---
 
@@ -155,7 +161,42 @@ python -m lorad.train ... --checkpoint_path runs/lorad/last.ckpt --max_epochs 50
 
 ---
 
-## Inference (input / output formats)
+## Inference
+
+The forithmus leaderboard entry runs this same stack inside a Docker image with weights pre-mounted. Locally (or to reproduce loading), use `python -m lorad.infer`.
+
+### What you need
+
+| Requirement | Notes |
+|-------------|--------|
+| **CUDA GPU** | Required — `lorad.infer` raises if CUDA is unavailable (no CPU fallback). |
+| **MedVAE** + **MedSyn** | Installed / on `PYTHONPATH` as in [Installation](#installation). |
+| **Models directory** | Layout below; set with `LORAD_MODELS_DIR` (default in code: `/opt/app/models` for the Docker path). |
+| **Prompts JSON** | Forithmus-style list of `{input_image_name, report}`. |
+
+**Models directory layout** (`LORAD_MODELS_DIR`):
+
+```
+models/
+  light_model.ckpt          # copy or symlink of saved_models/.../last.ckpt
+  bert_tokenizer/           # CXR-BERT tokenizer + weights (local_files_only)
+  latent_mean_std.json      # latent z-score stats used at train time ({"mean", "std"})
+  hf_cache/                 # offline Hugging Face cache for MedVAE
+    hub/models--stanfordmimi--MedVAE/.../vae_4x_1c_3D.ckpt
+```
+
+`lorad.infer` validates all of these **before** loading and fails with a clear `FileNotFoundError` if anything is missing. The MedVAE cache is required: the entrypoint forces Hugging Face offline mode (`HF_HUB_OFFLINE=1`, etc.) so weights are not downloaded at runtime.
+
+### How loading works (`lorad.infer`)
+
+1. **Prerequisites** — CUDA, checkpoint, tokenizer dir, stats JSON, MedVAE HF cache (incl. `vae_4x_1c_3D.ckpt`).
+2. **CXR-BERT** — `AutoTokenizer` / `AutoModel.from_pretrained(bert_tokenizer/, local_files_only=True)`.
+3. **Diffusion U-Net** — build `LatentDiffusion` with the train-time architecture (`dim=32`, latent `(48,96,96)`, v-pred, DDIM **75** steps).
+4. **Checkpoint** — `torch.load(light_model.ckpt)`; keep only keys prefixed `ema_model.` and `load_state_dict(..., strict=True)`. Raises if no EMA weights are present.
+5. **MedVAE decoder** — `MVAE(model_name="medvae_4_1_3d", modality="ct")` from the offline cache.
+6. **Sampling** — text embedding → DDIM with **CFG** (`CFG_SCALE`, default **3.0**) and the **null FOV** token (FOV is never used at test time) → denormalize latents with `latent_mean_std.json` → MedVAE decode → write NIfTI.
+
+### Input / output
 
 **Input** (`prompts.json`):
 
@@ -167,12 +208,22 @@ python -m lorad.train ... --checkpoint_path runs/lorad/last.ckpt --max_epochs 50
 
 **Output:** one HU NIfTI per case, `<input_image_name>.nii.gz`, shape `(192, 384, 384)`, LAS orientation, voxel spacing `(1.0, 1.0, 1.8828)` mm.
 
+### Environment variables
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `LORAD_MODELS_DIR` | `/opt/app/models` | Models directory (layout above) |
+| `LORAD_INPUT` | `/input/prompts.json` | Prompts JSON path |
+| `LORAD_OUTPUT` | `/output` | Output directory for `.nii.gz` |
+| `CFG_SCALE` | `3.0` | Classifier-free guidance scale (≥ 1.0) |
+
+### Local run example
+
 ```bash
-# Point LORAD_MODELS_DIR at a folder containing:
-#   light_model.ckpt  (copy/symlink of saved_models/.../last.ckpt)
-#   bert_tokenizer/
-#   latent_mean_std.json
-#   hf_cache/   (optional offline MedVAE cache)
+# After Installation (MedVAE editable install + MedSyn/src on PYTHONPATH)
+mkdir -p models
+ln -s "$(pwd)/saved_models/resizepad_48x96x96_fov_cfg/last.ckpt" models/light_model.ckpt
+# Also place bert_tokenizer/, latent_mean_std.json, and hf_cache/ under models/
 
 export LORAD_MODELS_DIR=./models
 export LORAD_INPUT=./prompts.json
@@ -182,19 +233,21 @@ export CFG_SCALE=3.0
 python -m lorad.infer
 ```
 
-Inference always uses the **null FOV** token (report + CFG only). DDIM steps: **75**.
-
 ---
 
 ## Final weight file (leaderboard submission)
 
- Submission checkpoint [`saved_models/resizepad_48x96x96_fov_cfg/last.ckpt`](saved_models/resizepad_48x96x96_fov_cfg/last.ckpt) |
+**Submission ID:** `cc73dcf9`
+
+The code and weights in this repository correspond to forithmus CT Volume Generation submission **`cc73dcf9`**.
+
+Final checkpoint (Git LFS): [`saved_models/resizepad_48x96x96_fov_cfg/last.ckpt`](saved_models/resizepad_48x96x96_fov_cfg/last.ckpt)
 
 ---
 
 ## Results
 
-Official scores from the [CT Volume Generation](https://research.forithmus.com/challenges/ct-volume-generation#leaderboard) leaderboard (forithmus, Main 2026), entry **Prateek Mathur** 
+Official scores from the [CT Volume Generation](https://research.forithmus.com/challenges/ct-volume-generation#leaderboard) leaderboard (forithmus, Main 2026), entry **Prateek Mathur**, submission **`cc73dcf9`**:
 
 | Metric | Value |
 |--------|------:|
